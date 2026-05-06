@@ -36,38 +36,41 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     const supabase = supabaseRef.current;
 
     // Get initial session
-    supabase.auth.getSession().then(({ data: { session } }) => {
+    const initSession = async () => {
+      const { data: { session } } = await supabase.auth.getSession();
       setSession(session);
       setUser(session?.user ?? null);
 
       if (session?.user) {
-        supabase
-          .from("users")
-          .select("*")
-          .eq("id", session.user.id)
-          .single()
-          .then(({ data }) => {
-            if (data) {
-              setAppUser({
-                id: data.id,
-                email: data.email,
-                displayName: data.display_name,
-                avatarUrl: data.avatar_url,
-                status: data.status,
-                createdAt: data.created_at,
-                updatedAt: data.updated_at,
-                lastSignInAt: data.last_sign_in_at,
-              });
-            }
-            setIsLoading(false);
-          })
-          .catch(() => {
-            setIsLoading(false);
-          });
+        try {
+          const { data } = await supabase
+            .from("users")
+            .select("*")
+            .eq("id", session.user.id)
+            .single();
+
+          if (data) {
+            setAppUser({
+              id: data.id,
+              email: data.email,
+              displayName: data.display_name,
+              avatarUrl: data.avatar_url,
+              status: data.status,
+              createdAt: data.created_at,
+              updatedAt: data.updated_at,
+              lastSignInAt: data.last_sign_in_at,
+            });
+          }
+        } catch {
+          // User not found in public.users - first login
+        }
+        setIsLoading(false);
       } else {
         setIsLoading(false);
       }
-    });
+    };
+
+    initSession();
 
     const {
       data: { subscription },
